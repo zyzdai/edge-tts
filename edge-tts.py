@@ -3,7 +3,7 @@ import os
 import re
 import sys
 
-from flask import Flask, request
+from flask import Flask, request, make_response, send_from_directory, jsonify
 from qcloud_cos import CosConfig, CosS3Client
 
 app = Flask(__name__)
@@ -91,7 +91,7 @@ def createAudio(text, file_name, voiceId):
     os.system(script)
     # 上传到腾讯云COS云存储
     # uploadCos(filePath, file_name)
-    return "success"
+    return filePath
 
 
 def getParameter(paramName):
@@ -101,14 +101,24 @@ def getParameter(paramName):
 
 @app.route('/dealAudio',methods=['POST','GET'])
 def dealAudio():
+    file_name = 'output.mp3'
     text = getParameter('text')
     file_name = getParameter('file_name')
     voice = getParameter('voice')
-    return createAudio(text, file_name, voice)
+    filePath = createAudio(text, file_name, voice)
+    r = os.path.split(filePath)
+    print(r)
+    try:
+        response = make_response(
+            send_from_directory(r[0], file_name, as_attachment=True))
+        return response
+    except Exception as e:
+        return jsonify({"code": "异常", "message": "{}".format(e)})
+
 
 @app.route('/')
 def index():
     return 'welcome to my tts!'
 
 if __name__ == "__main__":
-    app.run(port=2020,host="127.0.0.1",debug=True)
+    app.run(port=2020,host="0.0.0.0")
